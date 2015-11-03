@@ -1,0 +1,136 @@
+{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
+module Download where
+import Network.HTTP.Conduit (simpleHttp)
+import Data.Aeson
+import Data.Text
+import Control.Applicative
+import Control.Monad
+import qualified Data.ByteString.Lazy as B
+import GHC.Generics
+-- API file Games for DB Game
+data Games = Games {games :: [Game]} deriving (Show,Generic)
+
+data Game = Game {
+aliases :: String
+, api_detail_url :: String
+, date_added :: String
+, date_last_updated :: String
+, deck :: String
+, description :: String
+, expected_release_day :: String
+, expected_release_month :: String
+, expected_release_quarter :: String
+, expected_release_year :: String
+, id :: Int
+, image :: Images
+, name :: String
+, number_of_users_reviews :: Int
+, original_game_rating :: Ratings
+, expected_release_date:: String
+, platforms :: Platforms
+} deriving (Show,Generic)
+
+data Images = Images {
+medium_url ::  String
+, screen_url :: String
+, small_url :: String
+, super_url :: String
+, thumb_url :: String
+, tyny_url :: String
+} deriving (Show,Generic)
+
+data Ratings = Ratings {
+ratings_api_detail_url :: String
+, ratings_id :: Maybe Int
+, ratings_name :: Maybe String
+} deriving (Show,Generic)
+
+data Platforms = Platforms {
+platform_id :: Int
+, platform_name :: String
+, site_detail_url :: String
+, abbreviation :: String
+} deriving (Show,Generic)
+
+-- Clerifying differences for Ratings
+instance FromJSON Ratings where
+parseJSON (Object v) = Ratings <$>
+v .: "api_detail_url" <*>
+v .: "id" <*>
+v .:? "name"
+parseJSON _ = mzero
+
+instance ToJSON Ratings where
+toJSON (Ratings ratings_api_detail_url ratings_id ratings_name) = object ["api_detail_url" .= ratings_api_detail_url, "id" .= ratings_id, "name" .= ratings_name]
+
+-- Clerifying differences for Platforms
+instance FromJSON Platforms where
+parseJSON (Object v) = Platforms <$>
+v .: "id" <*>
+v .: "name" <*>
+v .: "site_detail_url"
+v .: "abbreviation"
+parseJSON _ = mzero
+
+instance ToJSON Platforms where
+toJSON (Platforms platform_id platform_name site_detail_url  abbreviation) = object ["id" .= platform_id, "name" .= platform_name, "site_detail_url" .= site_detail_url, "abbreviation" .= abbreviation]
+
+--API Game_ratings
+
+data Game_ratings = Game_ratings {game_ratings :: [Game_rating]} deriving (Show,Generic)
+
+data Game_rating = Game_rating {
+api_detail_url :: String
+, id :: Maybe Int
+, image :: Images
+, name :: String
+, rating_board :: Rating_boards
+} deriving (Show,Generic)
+
+data Rating_boards = Rating_boards {
+rating_api_detail_url :: String
+, rating_id :: Int
+, rating_name :: String
+} deriving (Show,Generic)
+
+
+-- Clerifying differences for Rating_boards
+instance FromJSON Rating_boards where
+parseJSON (Object v) = Rating_boards <$>
+v .: "api_detail_url" <*>
+v .: "id" <*>
+v .:? "name"
+parseJSON _ = mzero
+
+instance ToJSON Rating_boards where
+toJSON (Rating_boards rating_api_detail_url rating_id rating_name) = object ["api_detail_url" .= rating_api_detail_url, "id" .= rating_id, "name" .= rating_name]
+
+
+
+instance FromJSON Images
+instance ToJSON Images
+instance FromJSON Game
+instance ToJSON Game
+instance FromJSON Games
+instance ToJSON Games
+instance FromJSON Game_rating
+instance ToJSON Game_rating
+instance FromJSON Game_ratings
+instance ToJSON Game_ratings
+
+-- the URL to get the data
+url_games :: FilePath
+url_game_ratings :: FilePath
+url_games = "http://www.giantbomb.com/api/games/?api_key=f4d41a7a1de36904d8695413cdbfb3dce7ed0c32&format=json"
+url_game_ratings = "http://http://www.giantbomb.com/api/game_ratings/?api_key=f4d41a7a1de36904d8695413cdbfb3dce7ed0c32&format=json"
+
+--boxOffice :: IO (Either String Movies)
+fromGames = do
+d <- (eitherDecode <$> (simpleHttp url_games)) :: IO (Either String Games)
+case d of
+Right ps -> return ps
+
+
+fromRatings  = do
+d <- (eitherDecode <$> (simpleHttp url_game_ratings)) :: IO (Either String Game_ratings)
+return d
